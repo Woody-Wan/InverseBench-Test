@@ -146,12 +146,12 @@ class DMPlug(Algo):
             
             # Gradient sanity check before updating x_initial.
             desc = f'Iteration {iteration + 1}/{self.iteration}. Data fitting loss: {torch.sqrt(loss_scale)}, x_initial.grad norm: {torch.norm(x_initial.grad, 2).mean().item()}'
-            if self.grad_check_interval > 0 and (iteration + 1) % self.grad_check_interval == 0:
-                comparison = self._compare_gradient_methods(x_initial, observation, loss_scale, gradient)
-                if comparison.get('method') != 'error':
-                    desc += f" | Grad diff: {comparison['grad_diff']:.2e}, Loss diff: {comparison['loss_diff']:.2e}"
-                else:
-                    desc += f" | Grad check error: {comparison['error']}"
+            # if self.grad_check_interval > 0 and (iteration + 1) % self.grad_check_interval == 0:
+            #     comparison = self._compare_gradient_methods(x_initial, observation, loss_scale, gradient)
+            #     if comparison.get('method') != 'error':
+            #         desc += f" | Grad diff: {comparison['grad_diff']:.2e}, Loss diff: {comparison['loss_diff']:.2e}"
+            #     else:
+            #         desc += f" | Grad check error: {comparison['error']}"
             optimizer.step()
             pbar.set_description(desc)
 

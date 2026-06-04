@@ -15,6 +15,6 @@ method:
   # residual: DPS-style normalized sqrt(loss) update
   # none: use forward_op.gradient exactly, matching inversebench's operator loss
   # mse: upstream-style mean reduction; for multi-coil MRI this usually needs a much larger guidance_scale
-  loss_scaling: none
+  loss_scaling: residual
   # Set to e.g. 100 to print torch_mse gradient norm/cosine while using residual/external guidance.
-  grad_check_interval: 1
+  grad_check_interval: 0
