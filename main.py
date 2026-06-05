@@ -95,7 +95,14 @@ def main(config):
             target = data['target']
             # run the algorithm
             logger.info(f'Running inference on test sample {data_id}...')
-            recon = algo.inference(observation, num_samples=config.num_samples)
+            trace_dir = os.path.join(exp_dir, f'trace_{data_id}')
+            recon = algo.inference(
+                observation,
+                num_samples=config.num_samples,
+                target=target,
+                evaluator=evaluator,
+                trace_dir=trace_dir,
+            )
             logger.info(f'Peak GPU memory usage: {torch.cuda.max_memory_allocated() / 1024 ** 3:.2f} GB')
 
             result_dict = {

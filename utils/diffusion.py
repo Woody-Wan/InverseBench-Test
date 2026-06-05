@@ -1,4 +1,4 @@
-from tqdm import tqdm
+from tqdm import trange
 import torch
 import numpy as np
 from utils.scheduler import Scheduler
@@ -14,11 +14,13 @@ class DiffusionSampler:
 
             Parameters:
                 scheduler (Scheduler): Scheduler instance for managing sigma and timesteps.
-                solver (str): Solver method ('euler').
+                solver (str): Solver method ('euler' or 'ddim').
         """
         super().__init__()
         self.scheduler = scheduler
         self.solver = solver
+        if solver not in {'euler', 'ddim'}:
+            raise NotImplementedError(f'Unknown diffusion solver: {solver}')
 
     def sample(self, model, x_start, SDE=False, verbose=False):
         """
@@ -36,8 +38,11 @@ class DiffusionSampler:
         """
         if self.solver == 'euler':
             return self._euler(model, x_start, SDE, verbose)
-        else:
-            raise NotImplementedError
+        if self.solver == 'ddim':
+            if SDE:
+                raise ValueError("DDIM solver is deterministic; use SDE=False.")
+            return self._ddim(model, x_start, verbose)
+        raise NotImplementedError
 
     def score(self, model, x, sigma):
         """
@@ -59,7 +64,7 @@ class DiffusionSampler:
         """
             Euler's method for sampling from the diffusion process.
         """
-        pbar = tqdm.trange(self.scheduler.num_steps) if verbose else range(self.scheduler.num_steps)
+        pbar = trange(self.scheduler.num_steps) if verbose else range(self.scheduler.num_steps)
 
         x = x_start
         for step in pbar:
@@ -70,6 +75,31 @@ class DiffusionSampler:
                 x = x * scaling_factor + factor * score + np.sqrt(factor) * epsilon
             else:
                 x = x * scaling_factor + factor * score * 0.5 
+        return x
+
+    def _ddim(self, model, x_start, verbose=False):
+        """
+            Deterministic DDIM-style update in scheduler coordinates.
+
+            The sampler state follows x_t = s_t * (x_0 + sigma_t * eps).
+            The model is expected to return an x_0 estimate when called as
+            model(x_t / s_t, sigma_t), matching the preconditioned models used
+            by the Euler sampler above.
+        """
+        pbar = trange(self.scheduler.num_steps) if verbose else range(self.scheduler.num_steps)
+
+        x = x_start
+        for step in pbar:
+            sigma = self.scheduler.sigma_steps[step]
+            sigma_next = self.scheduler.sigma_steps[step + 1]
+            scaling = self.scheduler.scaling_steps[step]
+            scaling_next = self.scheduler.scaling_steps[step + 1]
+
+            sigma_tensor = torch.as_tensor(sigma).to(x.device)
+            x_scaled = x / scaling
+            denoised = model(x_scaled, sigma_tensor)
+            eps = (x_scaled - denoised) / sigma
+            x = scaling_next * (denoised + sigma_next * eps)
         return x
 
     def get_start(self, ref):
